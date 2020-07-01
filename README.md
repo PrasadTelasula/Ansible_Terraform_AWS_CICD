@@ -57,7 +57,7 @@ cd keys
    | `terraform-cicd-deploy` | `terraform-cicd-role` | `TERRAFORM_VERSION=0.12.28` | `terraform-cicd-artifacts` | `deployLogs` |
    | `terraform-cicd-destroy` | `terraform-cicd-role` | | `TERRAFORM_VERSION=0.12.28` | `terraform-cicd-artifacts` | `destroyLogs` |
 
-````
+
 6. Create pipeline
    Source Code Checkout -> Change Approval (Manual) -> CodeBuild (Deploy) -> Destroy Approval (Manual) -> CodeBuild (Destroy)
 ````
