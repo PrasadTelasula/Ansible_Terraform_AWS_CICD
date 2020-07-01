@@ -44,7 +44,9 @@ cd keys
 
 ````
 3. Create IAM role with full admin privileges. (for codebuild)
-   4.1. terraform-cicd-role
+   | `Role Name ` |
+   | ------------ |
+   | `terraform-cicd-role` |
 ````
 ````
 4. Create CodeCommit & push the code
