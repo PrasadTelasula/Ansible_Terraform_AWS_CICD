@@ -30,10 +30,13 @@ cd keys
 # CICD 
 ````
 1. Create S3 Buckets
-   # aws s3api create-bucket --bucket terraform-cicd-artifacts --region ap-south-1
-   # aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1
-   # aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1
 ````
+   | `Command` |
+   | :---------: |
+   | `aws s3api create-bucket --bucket terraform-cicd-artifacts --region ap-south-1` |
+   | `aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1` |
+   | `aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1` |
+
 
 ````
 2. Create DynamoDB Table to store the Terraform state lock.
