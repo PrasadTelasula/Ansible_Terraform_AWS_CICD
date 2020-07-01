@@ -42,6 +42,7 @@ cd keys
    | ------------ | ----------- |
    | `terraform-cicd-state` | `LockID` |
 
+````
 3. Create IAM role with full admin privileges. (for codebuild)
    4.1. terraform-cicd-role
 ````
