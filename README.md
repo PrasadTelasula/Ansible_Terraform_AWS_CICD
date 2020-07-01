@@ -28,38 +28,31 @@ cd keys
 
 # CICD 
 ````
-1. Create an IAM user with programatic access
-````
-````
-2. Confgire AWS CLI locally
-   # aws configure
-````
-````
-3. Create S3 Buckets
+1. Create S3 Buckets
    # aws s3api create-bucket --bucket terraform-cicd-artifacts --region ap-south-1
    # aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1
    # aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1
 ````
 ````
 ````
-4. Create DynamoDB Table to store the Terraform state lock.
+2. Create DynamoDB Table to store the Terraform state lock.
    | `Table Name` | `Prmary Key` |
    | ------------ | ----------- |
    | `terraform-cicd-state` | `LockID` |
 ````
-4. Create IAM role with full admin privileges. (for codebuild)
+3. Create IAM role with full admin privileges. (for codebuild)
    4.1. terraform-cicd-role
 ````
 ````
-5. Create CodeCommit & push the code
+4. Create CodeCommit & push the code
    5.1. terraform-cicd
 ````
 ````
-6. Create CodeBuild Projects.
+5. Create CodeBuild Projects.
    6.1. terraform-cicd-deploy
    6.2. terraform-cicd-destroy
 ````
 ````
-7. Create pipeline
+6. Create pipeline
    Source Code Checkout -> Change Approval (Manual) -> CodeBuild (Deploy) -> Destroy Approval (Manual) -> CodeBuild (Destroy)
 ````
