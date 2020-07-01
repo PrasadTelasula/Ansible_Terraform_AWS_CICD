@@ -49,8 +49,9 @@ cd keys
 ````
 ````
 5. Create CodeBuild Projects.
-   6.1. terraform-cicd-deploy
-   6.2. terraform-cicd-destroy
+   | Project Name |  IAM Role | Environmentvariables | Logs to S3  | Path Prefix |
+   | terraform-cicd-deploy | terraform-cicd-role | TERRAFORM_VERSION=0.12.28 | terraform-cicd-artifacts | deployLogs |
+   | terraform-cicd-destroy | terraform-cicd-role | |TERRAFORM_VERSION=0.12.28 | terraform-cicd-artifacts | deployLogs |
 ````
 ````
 6. Create pipeline
