@@ -40,3 +40,18 @@ cd keys
    # aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1
    # aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1
 ````
+````
+4. Create IAM role with full admin privileges. (for codebuild)
+````
+````
+5. Create CodeCommit & push the code
+````
+````
+6. Create CodeBuild Projects.
+   6.1. terraform-cicd-deploy
+   6.2. terraform-cicd-destroy
+````
+````
+7. Create pipeline
+   Source Code Checkout -> Change Approval (Manual) -> CodeBuild (Deploy) -> Destroy Approval (Manual) -> CodeBuild (Destroy)
+````
