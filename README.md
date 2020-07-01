@@ -41,6 +41,11 @@ cd keys
    # aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1
 ````
 ````
+````
+4. Create DynamoDB Table to store the Terraform state lock.
+   | `Table Name` | `Prmary Key` |
+   | `terraform-cicd-state` | `LockID` |
+````
 4. Create IAM role with full admin privileges. (for codebuild)
    4.1. terraform-cicd-role
 ````
