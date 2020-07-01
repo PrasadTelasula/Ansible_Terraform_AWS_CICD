@@ -42,9 +42,11 @@ cd keys
 ````
 ````
 4. Create IAM role with full admin privileges. (for codebuild)
+   4.1. terraform-cicd-role
 ````
 ````
 5. Create CodeCommit & push the code
+   5.1. terraform-cicd
 ````
 ````
 6. Create CodeBuild Projects.
