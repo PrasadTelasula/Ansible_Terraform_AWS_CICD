@@ -51,8 +51,10 @@ cd keys
 
 ````
 4. Create CodeCommit & push the code
-   5.1. terraform-cicd
 ````
+   | `Repository Name `|
+   | ----------------- |
+   | `terraform-cicd` |
 ````
 5. Create CodeBuild Projects.
 ````
@@ -65,3 +67,6 @@ cd keys
 6. Create pipeline
    Source Code Checkout -> Change Approval (Manual) -> CodeBuild (Deploy) -> Destroy Approval (Manual) -> CodeBuild (Destroy)
 ````
+   | `Pipeline Name ` |
+   | ---------------- |
+   | `tomcat-cicd` |
