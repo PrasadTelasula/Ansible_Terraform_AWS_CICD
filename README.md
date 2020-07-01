@@ -16,7 +16,7 @@ mkdir -p keys
 ````
 ````
 cd keys
-````
+
 
 | Node Name | Command                    |
 | ------------- | ------------------------------ |
@@ -24,7 +24,7 @@ cd keys
 | `CentosNode`   | ssh-keygen -t rsa -m PEM -f keys/centosLaunchKey -q -N ""     |
 | `UbuntNode`   | ssh-keygen -t rsa -m PEM -f keys/ubuntuLaunchKey -q -N ""     |
 | `WindowsNode`   | ssh-keygen -t rsa -m PEM -f keys/windowsLaunchKey -q -N ""    |
-
+````
 
 # CICD 
 ````
