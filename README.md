@@ -5,109 +5,38 @@
 # Clone this repository
 
 ````
-git clone https://github.com/PrasadTelasula/Ansible.git
+git clone https://github.com/PrasadTelasula/Ansible_Terraform_AWS_CICD.git
 ````
 
 
 # Generate SSH Keys.
 
 ````
-mkdir -p /home/centos/keys
+mkdir -p keys
 ````
 ````
-cd /home/centos/keys
+cd keys
 ````
 
 | Node Name | Command                    |
 | ------------- | ------------------------------ |
-| `ACS`      | ssh-keygen -t rsa -m PEM -f acsLaunchKey      |
-| `CentosNode`   | ssh-keygen -t rsa -m PEM -f centosLaunchKey     |
-| `UbuntNode`   | ssh-keygen -t rsa -m PEM -f ubuntuLaunchKey     |
-| `WindowsNode`   | ssh-keygen -t rsa -m PEM -f windowsLaunchKey    |
+| `ACS`      | ssh-keygen -t rsa -m PEM -f keys/acsLaunchKey -q -N ""      |
+| `CentosNode`   | ssh-keygen -t rsa -m PEM -f keys/centosLaunchKey -q -N ""     |
+| `UbuntNode`   | ssh-keygen -t rsa -m PEM -f keys/ubuntuLaunchKey -q -N ""     |
+| `WindowsNode`   | ssh-keygen -t rsa -m PEM -f keys/windowsLaunchKey -q -N ""    |
 
 
-# To Convert Openssh key to RSA Key
+# CICD 
 ````
-ssh-keygen -p -m PEM -f windowsLaunchKey
-````
-
-# Export AWS accesskey and secretkey
-
-> Create an **IAM** user with **Programtic Access** and attach **EC2FullAdmin** policy.
-
-````
-export AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXX
+1. Create an IAM user with programatic access
 ````
 ````
-export AWS_SECRET_ACCESS_KEY=XXXXXXXXXXX
-````
-
-
-# Terraform
-
-````
-terraform init
+2. Confgire AWS CLI locally
+   # aws configure
 ````
 ````
-terraform validate
-````
-````
-terraform plan -out tfplan
-````
-
-````
-terraform apply "tfplan"
-````
-
-
-# Get the Private IP's of CentosNode, UbuntuNode & WinodwsNode and update in host_vars folder
-> Linux example 
-
-````
----
-ansible_ssh_host: 192.168.1.1
-````
-
-> windows example
-
-````
----
-ansible_host: 192.168.1.2
-````
-
-# Get the windows server password and update in below file.
-> host_vars/node3
-````
-ansible_password: XXXXXXXX
-````
-
-# Test the connectivity using nc 
-> Linux example
-
-````
-nc -zv 192.168.1.1 22
-````
-> windows example
-
-````
-nc -zv 192.168.1.2 5985
-````
-
-
-
-# Finally ping the servers using ansible
-> Linux example
-
-````
-ansible centos -m ping
-````
-> windows example
-
-````
-ansible windows -m win_ping
-````
-
-# To Destroy infra
-````
-terraform destroy
+3. Create S3 Buckets
+   # aws s3api create-bucket --bucket terraform-cicd-artifacts --region ap-south-1
+   # aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1
+   # aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1
 ````
