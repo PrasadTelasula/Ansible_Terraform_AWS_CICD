@@ -49,7 +49,9 @@ resource "aws_instance" "ACS" {
             "sudo yum install epel-release vim wget git -y",
             "sudo yum install -y ansible",
             "sudo yum install nc -y",
-            "sudo easy_install pip",
+            #"sudo easy_install pip",
+            #"pip install pywinrm --user",
+            "sudo yum install python-pip -y",
             "pip install pywinrm --user",
             "touch /home/centos/inventory",
             "mkdir -p /home/centos/host_vars"   
