@@ -1,0 +1,655 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Provision CI/CD stack"
+Resources:
+    S3Bucket:
+        Type: "AWS::S3::Bucket"
+        Properties:
+            BucketName: terraform-cicd-artifacts
+        DependsOn: 
+          - CodeBuildIAMManagedPolicy
+          - CodeBuildIAMRole
+          - CodeBuildIAMInstanceProfile
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMInstanceProfile
+
+    S3Bucket2:
+        Type: "AWS::S3::Bucket"
+        Properties:
+            BucketName: terraform-cicd-state-file
+        DependsOn: 
+          - CodeBuildIAMManagedPolicy
+          - CodeBuildIAMRole
+          - CodeBuildIAMInstanceProfile
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMInstanceProfile
+
+
+    DynamoDBTable:
+        Type: "AWS::DynamoDB::Table"
+        Properties:
+            AttributeDefinitions: 
+              - 
+                AttributeName: "LockID"
+                AttributeType: "S"
+            TableName: terraform-cicd-state
+            KeySchema: 
+              - 
+                AttributeName: "LockID"
+                KeyType: "HASH"
+            ProvisionedThroughput: 
+                ReadCapacityUnits: 1
+                WriteCapacityUnits: 1
+        DependsOn: 
+          - CodeBuildIAMManagedPolicy
+          - CodeBuildIAMRole
+          - CodeBuildIAMInstanceProfile
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMInstanceProfile
+
+
+    CodeCommitRepository:
+        Type: "AWS::CodeCommit::Repository"
+        Properties:
+            RepositoryName: terraform-cicd
+        DependsOn: 
+          - CodeBuildIAMManagedPolicy
+          - CodeBuildIAMRole
+          - CodeBuildIAMInstanceProfile
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMInstanceProfile
+          - S3Bucket
+          - S3Bucket2
+
+
+    CodeBuildProject:
+        Type: "AWS::CodeBuild::Project"
+        DependsOn: 
+          - CodeCommitRepository
+        Properties:
+            Name: "terraform-cicd-destroy"
+            Source: 
+                BuildSpec: "buildspecdestroy.yaml"
+                GitCloneDepth: 1
+                GitSubmodulesConfig: 
+                    FetchSubmodules: false
+                InsecureSsl: false
+                Location: !Sub "https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/terraform-cicd"
+                Type: "CODECOMMIT"
+            Artifacts: 
+                Type: "NO_ARTIFACTS"
+            Cache: 
+                Type: "NO_CACHE"
+            Environment: 
+                ComputeType: "BUILD_GENERAL1_SMALL"
+                EnvironmentVariables: 
+                  - 
+                    Name: "TERRAFORM_VERSION"
+                    Type: "PLAINTEXT"
+                    Value: "1.0.2"
+                Image: "aws/codebuild/standard:5.0"
+                ImagePullCredentialsType: "CODEBUILD"
+                PrivilegedMode: false
+                Type: "LINUX_CONTAINER"
+            ServiceRole: !Sub "arn:aws:iam::${AWS::AccountId}:role/service-role/terraform-deploy"
+            TimeoutInMinutes: 60
+            QueuedTimeoutInMinutes: 480
+            EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+            BadgeEnabled: false
+            LogsConfig: 
+                CloudWatchLogs: 
+                    Status: "ENABLED"
+                S3Logs: 
+                    Status: "ENABLED"
+                    Location: "terraform-cicd-artifacts/destroyLogs"
+                    EncryptionDisabled: false
+
+    CodeBuildProject2:
+        Type: "AWS::CodeBuild::Project"
+        DependsOn: 
+          - CodeBuildIAMManagedPolicy
+          - CodeBuildIAMRole
+          - CodeBuildIAMInstanceProfile
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMManagedPolicy
+          - CodePipelineIAMInstanceProfile
+          - S3Bucket
+          - S3Bucket2
+          - CodeCommitRepository
+          - CodeBuildProject
+        Properties:
+            Name: "terraform-cicd-deploy"
+            Description: "terraform-cicd-deploy"
+            Source: 
+                BuildSpec: "buildspec.yaml"
+                GitCloneDepth: 1
+                GitSubmodulesConfig: 
+                    FetchSubmodules: false
+                InsecureSsl: false
+                Location: !Sub "https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/terraform-cicd"
+                Type: "CODECOMMIT"
+            Artifacts: 
+                Type: "NO_ARTIFACTS"
+            Cache: 
+                Type: "NO_CACHE"
+            Environment: 
+                ComputeType: "BUILD_GENERAL1_SMALL"
+                EnvironmentVariables: 
+                  - 
+                    Name: "TERRAFORM_VERSION"
+                    Type: "PLAINTEXT"
+                    Value: "1.0.2"
+                Image: "aws/codebuild/standard:5.0"
+                ImagePullCredentialsType: "CODEBUILD"
+                PrivilegedMode: false
+                Type: "LINUX_CONTAINER"
+            ServiceRole: !Sub "arn:aws:iam::${AWS::AccountId}:role/service-role/terraform-deploy"
+            TimeoutInMinutes: 60
+            QueuedTimeoutInMinutes: 480
+            EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+            BadgeEnabled: true
+            LogsConfig: 
+                CloudWatchLogs: 
+                    Status: "ENABLED"
+                S3Logs: 
+                    Status: "ENABLED"
+                    Location: "terraform-cicd-artifacts/deployLogs"
+                    EncryptionDisabled: false
+
+    CodePipelinePipeline:
+        Type: "AWS::CodePipeline::Pipeline"
+        DependsOn:
+        - CodeBuildProject
+        - CodeBuildProject2
+        Properties:
+            Name: "terraform_cicd"
+            RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/service-role/terraform-pipeline"
+            ArtifactStore: 
+                Location: "terraform-cicd-artifacts"
+                Type: "S3"
+            Stages: 
+              - 
+                Name: "Source"
+                Actions: 
+                  - 
+                    Name: "Source"
+                    ActionTypeId: 
+                        Category: "Source"
+                        Owner: "AWS"
+                        Provider: "CodeCommit"
+                        Version: "1"
+                    Configuration: 
+                        BranchName: "master"
+                        OutputArtifactFormat: "CODE_ZIP"
+                        PollForSourceChanges: "true"
+                        RepositoryName: "terraform-cicd"
+                    OutputArtifacts: 
+                      - 
+                        Name: "SourceArtifact"
+                    Region: !Ref AWS::Region
+                    Namespace: "SourceVariables"
+                    RunOrder: 1
+              - 
+                Name: "Approval"
+                Actions: 
+                  - 
+                    Name: "Approval"
+                    ActionTypeId: 
+                        Category: "Approval"
+                        Owner: "AWS"
+                        Provider: "Manual"
+                        Version: "1"
+                    Configuration: 
+                        CustomData: "Review the changes before approve."
+                    Region: !Ref AWS::Region
+                    RunOrder: 1
+              - 
+                Name: "Build"
+                Actions: 
+                  - 
+                    Name: "Build"
+                    ActionTypeId: 
+                        Category: "Build"
+                        Owner: "AWS"
+                        Provider: "CodeBuild"
+                        Version: "1"
+                    Configuration: 
+                        ProjectName: "terraform-cicd-deploy"
+                    InputArtifacts: 
+                      - 
+                        Name: "SourceArtifact"
+                    OutputArtifacts: 
+                      - 
+                        Name: "BuildArtifact"
+                    Region: !Ref AWS::Region
+                    Namespace: "BuildVariables"
+                    RunOrder: 1
+              - 
+                Name: "Destroy_Approval"
+                Actions: 
+                  - 
+                    Name: "ApproveOrReject"
+                    ActionTypeId: 
+                        Category: "Approval"
+                        Owner: "AWS"
+                        Provider: "Manual"
+                        Version: "1"
+                    Configuration: {}
+                    Region: !Ref AWS::Region
+                    RunOrder: 1
+              - 
+                Name: "Destroy"
+                Actions: 
+                  - 
+                    Name: "Destroy_Infra"
+                    ActionTypeId: 
+                        Category: "Build"
+                        Owner: "AWS"
+                        Provider: "CodeBuild"
+                        Version: "1"
+                    Configuration: 
+                        ProjectName: "terraform-cicd-destroy"
+                    InputArtifacts: 
+                      - 
+                        Name: "SourceArtifact"
+                    Region: !Ref AWS::Region
+                    RunOrder: 1
+
+
+    AmazonCloudWatchEventRole:
+      Type: AWS::IAM::Role
+      DependsOn: CodePipelinePipeline
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            -
+              Effect: Allow
+              Principal:
+                Service:
+                  - events.amazonaws.com
+              Action: sts:AssumeRole
+        Path: /
+        Policies:
+          -
+            PolicyName: cwe-pipeline-execution
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                -
+                  Effect: Allow
+                  Action: codepipeline:StartPipelineExecution
+                  Resource: !Join [ '', [ 'arn:aws:codepipeline:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref CodePipelinePipeline ] ] 
+
+    AmazonCloudWatchEventRule:
+      Type: AWS::Events::Rule
+      DependsOn: CodePipelinePipeline
+      Properties:
+        EventPattern:
+          source:
+            - aws.codecommit
+          detail-type:
+            - 'CodeCommit Repository State Change'
+          resources:
+            - !Join [ '', [ 'arn:aws:codecommit:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref CodeCommitRepository ] ]
+          detail:
+            event:
+              - referenceCreated
+              - referenceUpdated
+            referenceType:
+              - branch
+            referenceName:
+              - master
+        Targets:
+          -
+            Arn: 
+              !Join [ '', [ 'arn:aws:codepipeline:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref CodePipelinePipeline ] ]
+            RoleArn: !GetAtt AmazonCloudWatchEventRole.Arn
+            Id: codepipeline-AppPipeline
+
+########################################
+########## terraform-deploy ############
+########################################
+    CodeBuildIAMManagedPolicy:
+        Type: "AWS::IAM::ManagedPolicy"
+        Properties:
+            ManagedPolicyName: !Sub "CodeBuildBasePolicy-terraform-cicd-deploy-${AWS::Region}"
+            Path: "/service-role/"
+            PolicyDocument: !Sub |
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Resource": [
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/terraform-cicd-deploy",
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/terraform-cicd-deploy:*",
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/terraform-cicd-destroy",
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/terraform-cicd-destroy:*"
+                            ],
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Resource": [
+                                "arn:aws:s3:::codepipeline-${AWS::Region}-*"
+                            ],
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:GetObject",
+                                "s3:GetObjectVersion",
+                                "s3:GetBucketAcl",
+                                "s3:GetBucketLocation"
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Resource": [
+                                "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:terraform-cicd"
+                            ],
+                            "Action": [
+                                "codecommit:GitPull"
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Resource": [
+                                "arn:aws:s3:::terraform-cicd-artifacts",
+                                "arn:aws:s3:::terraform-cicd-artifacts/*"
+                            ],
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:GetBucketAcl",
+                                "s3:GetBucketLocation"
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "codebuild:CreateReportGroup",
+                                "codebuild:CreateReport",
+                                "codebuild:UpdateReport",
+                                "codebuild:BatchPutTestCases",
+                                "codebuild:BatchPutCodeCoverages"
+                            ],
+                            "Resource": [
+                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/terraform-cicd-deploy-*",
+                                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/terraform-cicd-destroy-*"
+                            ]
+                        }
+                    ]
+                }
+
+    CodeBuildIAMRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/service-role/"
+            RoleName: "terraform-deploy"
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                - Effect: Allow
+                  Principal:
+                    Service:
+                       - codebuild.amazonaws.com
+                       - codepipeline.amazonaws.com
+                  Action:
+                    - 'sts:AssumeRole'
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+              - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+              - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+              - !Ref CodeBuildIAMManagedPolicy
+
+    CodeBuildIAMInstanceProfile:
+        Type: "AWS::IAM::InstanceProfile"
+        Properties:
+            Path: "/"
+            InstanceProfileName: "CodeBuildIAMAssumeRole"
+            Roles: 
+              - !Ref CodeBuildIAMRole
+
+    CodePipelineIAMManagedPolicy:
+        Type: "AWS::IAM::ManagedPolicy"
+        Properties:
+            ManagedPolicyName: !Sub "CodePipelinePolicy-terraform-cicd-deploy-${AWS::Region}"
+            Path: "/service-role/"
+            PolicyDocument: |
+                {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "iam:PassRole"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow",
+                            "Condition": {
+                                "StringEqualsIfExists": {
+                                    "iam:PassedToService": [
+                                        "cloudformation.amazonaws.com",
+                                        "elasticbeanstalk.amazonaws.com",
+                                        "ec2.amazonaws.com",
+                                        "ecs-tasks.amazonaws.com"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "Action": [
+                                "codecommit:CancelUploadArchive",
+                                "codecommit:GetBranch",
+                                "codecommit:GetCommit",
+                                "codecommit:GetRepository",
+                                "codecommit:GetUploadArchiveStatus",
+                                "codecommit:UploadArchive"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "codedeploy:CreateDeployment",
+                                "codedeploy:GetApplication",
+                                "codedeploy:GetApplicationRevision",
+                                "codedeploy:GetDeployment",
+                                "codedeploy:GetDeploymentConfig",
+                                "codedeploy:RegisterApplicationRevision"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "codestar-connections:UseConnection"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "elasticbeanstalk:*",
+                                "ec2:*",
+                                "elasticloadbalancing:*",
+                                "autoscaling:*",
+                                "cloudwatch:*",
+                                "s3:*",
+                                "sns:*",
+                                "cloudformation:*",
+                                "rds:*",
+                                "sqs:*",
+                                "ecs:*"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "lambda:InvokeFunction",
+                                "lambda:ListFunctions"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "opsworks:CreateDeployment",
+                                "opsworks:DescribeApps",
+                                "opsworks:DescribeCommands",
+                                "opsworks:DescribeDeployments",
+                                "opsworks:DescribeInstances",
+                                "opsworks:DescribeStacks",
+                                "opsworks:UpdateApp",
+                                "opsworks:UpdateStack"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "cloudformation:CreateStack",
+                                "cloudformation:DeleteStack",
+                                "cloudformation:DescribeStacks",
+                                "cloudformation:UpdateStack",
+                                "cloudformation:CreateChangeSet",
+                                "cloudformation:DeleteChangeSet",
+                                "cloudformation:DescribeChangeSet",
+                                "cloudformation:ExecuteChangeSet",
+                                "cloudformation:SetStackPolicy",
+                                "cloudformation:ValidateTemplate"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "codebuild:BatchGetBuilds",
+                                "codebuild:StartBuild",
+                                "codebuild:BatchGetBuildBatches",
+                                "codebuild:StartBuildBatch"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "devicefarm:ListProjects",
+                                "devicefarm:ListDevicePools",
+                                "devicefarm:GetRun",
+                                "devicefarm:GetUpload",
+                                "devicefarm:CreateUpload",
+                                "devicefarm:ScheduleRun"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "servicecatalog:ListProvisioningArtifacts",
+                                "servicecatalog:CreateProvisioningArtifact",
+                                "servicecatalog:DescribeProvisioningArtifact",
+                                "servicecatalog:DeleteProvisioningArtifact",
+                                "servicecatalog:UpdateProduct"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "cloudformation:ValidateTemplate"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "ecr:DescribeImages"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "states:DescribeExecution",
+                                "states:DescribeStateMachine",
+                                "states:StartExecution"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "appconfig:StartDeployment",
+                                "appconfig:StopDeployment",
+                                "appconfig:GetDeployment"
+                            ],
+                            "Resource": "*"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+
+    CodePipelineIAMRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/service-role/"
+            RoleName: "terraform-pipeline"
+            AssumeRolePolicyDocument: 
+                Version: "2012-10-17"
+                Statement:
+                - Effect: Allow
+                  Principal:
+                    Service:
+                       - codepipeline.amazonaws.com
+                  Action:
+                    - 'sts:AssumeRole'
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - !Ref CodePipelineIAMManagedPolicy
+
+    CodePipelineIAMInstanceProfile:
+        Type: "AWS::IAM::InstanceProfile"
+        Properties:
+            Path: "/"
+            InstanceProfileName: "CodePipelineAssumeRole"
+            Roles: 
+              - !Ref CodePipelineIAMRole
+
+Outputs:
+  TerraformArtifactsS3:
+    Description: S3 Bucket to store Artifacts.
+    Value: !Ref S3Bucket
+
+  TerraformStatfilesS3:
+    Description: S3 Bucket to store Terraform State file.
+    Value: !Ref S3Bucket
+
+  TerraformStateLockDynamoDBTable:
+    Description: DynamoDB Table Name to Lock Terraform state.
+    Value: !Ref DynamoDBTable
+
+  CodeCommitRepository:
+    Description: CodeCommit Repository to store IaC CodeBase.
+    Value: !Ref CodeCommitRepository
+
+  CodeBuildDeploy:
+    Description: CodeBuild Project to Deploy Infrastructure.
+    Value: !Ref CodeBuildProject2
+
+  CodeBuildDestroy:
+    Description: CodeBuild Project to Destroy Infrastructure.
+    Value: !Ref CodeBuildProject
+
+  CodePipelinePipeline:
+    Description: CodePipeline to trigger Build & Deploy based on CodeCommit Events.
+    Value: !Ref CodePipelinePipeline
+
+   
