@@ -72,4 +72,4 @@ cd keys
 ````
    | `Pipeline Name ` |
    | ---------------- |
-   | `tomcat-cicd` |
+   | `terraform-cicd` |
