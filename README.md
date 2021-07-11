@@ -33,9 +33,9 @@ cd keys
 ````
    | `Command` |
    | :---------: |
-   | `aws s3api create-bucket --bucket terraform-cicd-artifacts --region ap-south-1` |
-   | `aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1` |
-   | `aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1` |
+   | `aws s3api create-bucket --bucket terraform-cicd-artifacts --region ap-south-1 --create-bucket-configuration LocationConstraint=ap-south-1` |
+   | `aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1 --create-bucket-configuration LocationConstraint=ap-south-1` |
+   | `aws s3api create-bucket --bucket terraform-cicd-state-file --region ap-south-1 --create-bucket-configuration LocationConstraint=ap-south-1` |
 
 
 ````
